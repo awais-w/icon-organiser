@@ -2454,7 +2454,7 @@ async function main() {
   const wrapIcon = (icon: ComponentNode | ComponentSetNode) => {
     const wrapper = figma.createFrame();
     wrapper.name = icon.name;
-    wrapper.layoutMode = "VERTICAL";
+    wrapper.layoutMode = "HORIZONTAL";
     wrapper.primaryAxisAlignItems = "CENTER";
     wrapper.counterAxisAlignItems = "CENTER";
     wrapper.layoutSizingVertical = "HUG";
@@ -2468,6 +2468,8 @@ async function main() {
     const text = figma.createText();
     text.name = "caption";
     text.characters = icon.name;
+    text.resize(200, text.height);
+    text.fontSize = 16;
     wrapper.appendChild(text);
     return wrapper;
   };
@@ -2569,8 +2571,6 @@ async function main() {
       return 0;
     });
 
-    sortedChildren.forEach((child) => rootFrame.appendChild(child));
-
     // sort rootFrame children by node type
     [...rootFrame.children].sort((a, b) => {
       if (a.type === "COMPONENT_SET" && b.type === "COMPONENT") {
@@ -2581,6 +2581,8 @@ async function main() {
       }
       return 0;
     });
+
+    sortedChildren.forEach((child) => rootFrame.appendChild(child));
 
     // close figma plugin
     figma.closePlugin();
