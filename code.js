@@ -8,6 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+// Object containing metadata for all icons
+// Format: "IconName": "Category / tags, comma, separated"
 const metaData = {
     Acorn: "Weather & Nature / *new*, savings, nut, vegetable, veggies, food, groceries, market, weather & nature",
     Atom: "Weather & Nature / atomic, nucleus, nuclear, reactor, science, physics, electron, automation, react, weather & nature",
@@ -1522,14 +1524,16 @@ const metaData = {
     Student: "Education / pupil, graduate, classroom, teacher, education, school, college, university, education",
     Video: "Education / training, course, education, tutorial, education",
 };
-// organise icons
+// Constants
 const selectionList = [...figma.currentPage.selection];
 const selection = selectionList[0];
 const iconSize = 24;
+// Main function to execute the plugin
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         yield figma.loadFontAsync({ family: "Inter", style: "Regular" });
-        const componentisedIcon = (icon) => {
+        // Create a component from an icon
+        const createComponentFromIcon = (icon) => {
             const component = figma.createComponent();
             component.name = icon.name;
             component.resize(iconSize, iconSize);
@@ -1546,16 +1550,21 @@ function main() {
             component.appendChild(clonedIcon);
             return component;
         };
-        // convert string to title case
-        const titleCase = (str) => str
+        // Convert a string to title case
+        const toTitleCase = (str) => str
             .split("-")
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ");
-        const setDescription = (comp) => {
+        // Set the description of a component or component set
+        const applyDescription = (comp) => {
+            var _a;
             const key = comp.name.split(" ").join("");
-            key && (comp.description = metaData[key].split("*new*, ").join(""));
+            if (key) {
+                comp.description = ((_a = metaData[key]) === null || _a === void 0 ? void 0 : _a.split("*new*, ").join("")) || "";
+            }
         };
-        const wrapIcon = (icon) => {
+        // Wrap an icon with a frame and add a caption
+        const wrapIconWithFrame = (icon) => {
             const wrapper = figma.createFrame();
             wrapper.name = icon.name;
             wrapper.layoutMode = "HORIZONTAL";
@@ -1568,7 +1577,7 @@ function main() {
             wrapper.paddingTop = 8;
             wrapper.paddingBottom = 8;
             wrapper.appendChild(icon);
-            // create a text node to display the icon name
+            // Create a text node for the icon name
             const text = figma.createText();
             text.name = "caption";
             text.characters = icon.name;
@@ -1577,103 +1586,104 @@ function main() {
             wrapper.appendChild(text);
             return wrapper;
         };
-        // rootFrame to contain componentised icons
-        const rootFrame = figma.createFrame();
-        rootFrame.name = "Icon set";
-        rootFrame.layoutMode = "HORIZONTAL";
-        rootFrame.resize(1600, rootFrame.height);
-        rootFrame.layoutSizingVertical = "HUG";
-        rootFrame.layoutWrap = "WRAP";
-        rootFrame.itemSpacing = 24;
-        rootFrame.counterAxisSpacing = 24;
-        rootFrame.paddingLeft = 48;
-        rootFrame.paddingRight = 48;
-        rootFrame.paddingTop = 48;
-        rootFrame.paddingBottom = 48;
-        rootFrame.primaryAxisAlignItems = "CENTER";
-        rootFrame.counterAxisAlignItems = "CENTER";
+        // Root frame to contain all icons
+        const createRootFrame = () => {
+            const frame = figma.createFrame();
+            frame.name = "Icon set";
+            frame.layoutMode = "HORIZONTAL";
+            frame.resize(1600, frame.height);
+            frame.layoutSizingVertical = "HUG";
+            frame.layoutWrap = "WRAP";
+            frame.itemSpacing = 24;
+            frame.counterAxisSpacing = 24;
+            frame.paddingLeft = 48;
+            frame.paddingRight = 48;
+            frame.paddingTop = 48;
+            frame.paddingBottom = 48;
+            frame.primaryAxisAlignItems = "CENTER";
+            frame.counterAxisAlignItems = "CENTER";
+            return frame;
+        };
+        const rootFrame = createRootFrame();
         if ("children" in selection && Array.isArray(selection.children)) {
-            // Collect nodes to remove
             const nodesToRemove = [];
-            const handleFilledIcons = (icon) => {
+            // Handle icons with "-fill" style
+            const processFilledIcons = (icon) => {
                 const iconName = icon.name.replace("-fill", "");
-                const filled = componentisedIcon(icon);
-                filled.name = "style=fill";
+                const filledComponent = createComponentFromIcon(icon);
+                filledComponent.name = "style=fill";
                 nodesToRemove.push(icon);
-                // Find the outline icon before removing the original icon
-                const strokedIcon = selection.children.find((child) => child.name === iconName);
-                if (strokedIcon) {
-                    const outlined = componentisedIcon(strokedIcon);
-                    outlined.name = "style=outline";
-                    nodesToRemove.push(strokedIcon);
-                    const compSet = figma.combineAsVariants([filled, outlined], rootFrame);
-                    compSet.name = titleCase(iconName);
-                    setDescription(compSet);
-                    compSet.layoutMode = "HORIZONTAL";
-                    compSet.itemSpacing = 8;
-                    compSet.layoutSizingVertical = "HUG";
-                    compSet.strokeWeight = 1;
-                    compSet.strokeAlign = "INSIDE";
-                    compSet.strokes = [
+                // Find the corresponding outline icon
+                const outlineIcon = selection.children.find((child) => child.name === iconName);
+                if (outlineIcon) {
+                    const outlinedComponent = createComponentFromIcon(outlineIcon);
+                    outlinedComponent.name = "style=outline";
+                    nodesToRemove.push(outlineIcon);
+                    // Combine filled and outlined icons as variants
+                    const componentSet = figma.combineAsVariants([filledComponent, outlinedComponent], rootFrame);
+                    componentSet.name = toTitleCase(iconName);
+                    applyDescription(componentSet);
+                    componentSet.layoutMode = "HORIZONTAL";
+                    componentSet.itemSpacing = 8;
+                    componentSet.layoutSizingVertical = "HUG";
+                    componentSet.strokeWeight = 1;
+                    componentSet.strokeAlign = "INSIDE";
+                    componentSet.strokes = [
                         { type: "SOLID", color: { r: 0.592, g: 0.278, b: 1 } },
                     ];
-                    compSet.cornerRadius = 4;
-                    compSet.paddingLeft = 16;
-                    compSet.paddingRight = 16;
-                    compSet.paddingTop = 16;
-                    compSet.paddingBottom = 16;
-                    rootFrame.appendChild(wrapIcon(compSet));
+                    componentSet.cornerRadius = 4;
+                    componentSet.paddingLeft = 16;
+                    componentSet.paddingRight = 16;
+                    componentSet.paddingTop = 16;
+                    componentSet.paddingBottom = 16;
+                    rootFrame.appendChild(wrapIconWithFrame(componentSet));
                 }
                 else {
-                    filled.name = titleCase(iconName);
-                    setDescription(filled);
-                    rootFrame.appendChild(wrapIcon(filled));
+                    filledComponent.name = toTitleCase(iconName);
+                    applyDescription(filledComponent);
+                    rootFrame.appendChild(wrapIconWithFrame(filledComponent));
                 }
             };
-            // Iterate over selection.children
+            // Process all filled icons
             selection.children.forEach((icon) => {
                 if (icon.name.includes("-fill")) {
-                    handleFilledIcons(icon);
+                    processFilledIcons(icon);
                 }
             });
-            // Remove all nodes after processing
+            // Remove processed nodes
             nodesToRemove.forEach((node) => node.remove());
-            // process icons without fill/outline pairing
+            // Process remaining icons without fill/outline pairing
             if (selection.children.length) {
                 selection.children.forEach((icon) => {
-                    const iconComp = componentisedIcon(icon);
-                    iconComp.name = titleCase(icon.name);
-                    setDescription(iconComp);
-                    rootFrame.appendChild(wrapIcon(iconComp));
+                    const iconComponent = createComponentFromIcon(icon);
+                    iconComponent.name = toTitleCase(icon.name);
+                    applyDescription(iconComponent);
+                    rootFrame.appendChild(wrapIconWithFrame(iconComponent));
                 });
             }
-            // remove original selection
+            // Remove the original selection
             selection.remove();
-            // sort rootFrame children by name
+            // Sort rootFrame children by name
             const sortedChildren = [...rootFrame.children].sort((a, b) => {
-                if (a.name < b.name) {
+                if (a.name < b.name)
                     return -1;
-                }
-                if (a.name > b.name) {
+                if (a.name > b.name)
                     return 1;
-                }
                 return 0;
             });
-            // sort rootFrame children by node type
+            // Sort rootFrame children by node type
             [...rootFrame.children].sort((a, b) => {
-                if (a.type === "COMPONENT_SET" && b.type === "COMPONENT") {
+                if (a.type === "COMPONENT_SET" && b.type === "COMPONENT")
                     return -1;
-                }
-                if (a.type === "COMPONENT" && b.type === "COMPONENT_SET") {
+                if (a.type === "COMPONENT" && b.type === "COMPONENT_SET")
                     return 1;
-                }
                 return 0;
             });
             sortedChildren.forEach((child) => rootFrame.appendChild(child));
-            // close figma plugin
+            // Close the plugin
             figma.closePlugin();
         }
     });
 }
-// Call the async main function to start the plugin
+// Call the main function to start the plugin
 main();
