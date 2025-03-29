@@ -2421,7 +2421,10 @@ const iconSize = 24;
 
 // Main function to execute the plugin
 async function main() {
-  await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+  await Promise.all([
+    figma.loadFontAsync({ family: "Inter", style: "Regular" }),
+    figma.loadFontAsync({ family: "Inter", style: "Bold" }),
+  ]);
 
   // Create a component from an icon
   const createComponentFromIcon = (icon: FrameNode) => {
@@ -2455,14 +2458,19 @@ async function main() {
   const applyDescription = (comp: ComponentNode | ComponentSetNode) => {
     const key = comp.name.split(" ").join("");
     if (key) {
-      comp.description = metaData[key]?.split("*new*, ").join("") || "";
+      comp.description =
+        metaData[key]
+          ?.split("*new*, ")
+          .join("")
+          .split("*updated*, ")
+          .join("") || "";
     }
   };
 
   // Wrap an icon with a frame and add a caption
   const wrapIconWithFrame = (icon: ComponentNode | ComponentSetNode) => {
     const wrapper = figma.createFrame();
-    wrapper.name = icon.name;
+    wrapper.name = `${icon.description.split(" / ")[0]}/${icon.name}`;
     wrapper.layoutMode = "HORIZONTAL";
     wrapper.primaryAxisAlignItems = "CENTER";
     wrapper.counterAxisAlignItems = "CENTER";
@@ -2489,12 +2497,10 @@ async function main() {
   const createRootFrame = () => {
     const frame = figma.createFrame();
     frame.name = "Icon set";
-    frame.layoutMode = "HORIZONTAL";
+    frame.layoutMode = "VERTICAL";
     frame.resize(1600, frame.height);
     frame.layoutSizingVertical = "HUG";
-    frame.layoutWrap = "WRAP";
     frame.itemSpacing = 24;
-    frame.counterAxisSpacing = 24;
     frame.paddingLeft = 48;
     frame.paddingRight = 48;
     frame.paddingTop = 48;
@@ -2586,14 +2592,65 @@ async function main() {
       return 0;
     });
 
-    // Sort rootFrame children by node type
-    [...rootFrame.children].sort((a, b) => {
-      if (a.type === "COMPONENT_SET" && b.type === "COMPONENT") return -1;
-      if (a.type === "COMPONENT" && b.type === "COMPONENT_SET") return 1;
-      return 0;
-    });
+    // // Sort rootFrame children by node type
+    // [...rootFrame.children].sort((a, b) => {
+    //   if (a.type === "COMPONENT_SET" && b.type === "COMPONENT") return -1;
+    //   if (a.type === "COMPONENT" && b.type === "COMPONENT_SET") return 1;
+    //   return 0;
+    // });
 
     sortedChildren.forEach((child) => rootFrame.appendChild(child));
+
+    // Create category frames and organize icons
+    const categories = new Set<string>();
+    const iconNodes = [...rootFrame.children]; // Create a copy of children array
+
+    // First collect all categories
+    iconNodes.forEach((child) => {
+      const category = child.name.split("/")[0];
+      categories.add(category);
+    });
+
+    // Then create frames and move icons
+    categories.forEach((category) => {
+      const categoryFrame = figma.createFrame();
+      categoryFrame.name = category;
+
+      rootFrame.appendChild(categoryFrame);
+
+      // Configure category frame layout
+      categoryFrame.layoutMode = "HORIZONTAL";
+      categoryFrame.layoutSizingHorizontal = "FILL";
+      categoryFrame.layoutSizingVertical = "HUG";
+      categoryFrame.layoutWrap = "WRAP";
+      categoryFrame.itemSpacing = 24;
+      categoryFrame.counterAxisSpacing = 24;
+      categoryFrame.paddingLeft = 48;
+      categoryFrame.paddingRight = 48;
+      categoryFrame.paddingTop = 48;
+      categoryFrame.paddingBottom = 48;
+      categoryFrame.primaryAxisAlignItems = "MIN";
+      categoryFrame.counterAxisAlignItems = "CENTER";
+
+      // add category title inside category frame
+      const categoryTitle = figma.createText();
+      categoryTitle.name = "category title";
+      categoryTitle.characters = category;
+      categoryTitle.fontSize = 48;
+      categoryTitle.fontName = { family: "Inter", style: "Bold" };
+      categoryTitle.resize(1400, categoryTitle.height);
+
+      categoryFrame.appendChild(categoryTitle);
+
+      // Filter and move icons for this category
+      const categoryIcons = iconNodes.filter((node) =>
+        node.name.startsWith(category)
+      );
+
+      categoryIcons.forEach((icon) => {
+        categoryFrame.appendChild(icon);
+      });
+    });
 
     // Close the plugin
     figma.closePlugin();
